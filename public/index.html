@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Booth</title>
+  <!-- socket io -->
+</head>
+
+<body>
+  <h1>Photo Booth</h1>
+  <div id="camera-status"></div>
+
+  <button id="capture">Capture Photo</button>
+  <div id="photo-result" />
+
+  <img id="video" alt="Video Stream" />
+
+  <textarea name="" id="memo1"></textarea>
+
+  <h1>Socket.IO Example</h1>
+  <input id="message" type="text" placeholder="Type a message" />
+  <button id="send">Send</button>
+  <ul id="messages"></ul>
+
+  <button id="btnConnect">Connect Socket</button>
+  <button id="btnDisconnect">Disconnect Socket</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+
+    // Check camera connection
+    fetch("/check-camera")
+      .then(res => res.json())
+      .then(data => {
+        console.log(data.message);
+        document.getElementById("camera-status").innerText = data.output;
+      })
+      .catch(err => {
+        document.getElementById("camera-status").innerText = "Camera not detected";
+      });
+
+    // Capture photo
+    document.getElementById("capture").addEventListener("click", () => {
+      fetch("/capture", { method: "POST" })
+        .then(res => res.json())
+        .then(data => {
+          const photoResult = document.getElementById("photo-result");
+          photoResult.innerHTML = `<p>${data.message}</p><img src="${data.photoName}" style="max-width: 640px;" 
+          alt="Captured Photo">`;
+        })
+        .catch(err => {
+          alert("Failed to capture photo");
+        });
+    });
+
+    // socket io
+    const socket = io();
+
+    const messageInput = document.getElementById('message');
+    const sendButton = document.getElementById('send');
+    const messagesList = document.getElementById('messages');
+
+    // Send a message to the server
+    sendButton.addEventListener('click', () => {
+      const message = messageInput.value;
+      if (message) {
+        socket.emit('message', message); // Emit 'message' event
+        messageInput.value = '';
+      }
+    });
+
+    // Listen for messages from the server
+    socket.on('message', (msg) => {
+      const li = document.createElement('li');
+      li.textContent = msg;
+      messagesList.appendChild(li);
+    });
+
+    const videoElement = document.getElementById('video');
+
+    var flag = true
+    setInterval(() => {
+      flag = true
+    }, 300);
+
+    socket.on('video', (data) => {
+      if (flag) {
+        flag = false
+        const img = new Image();
+        img.src = 'data:image/jpeg;base64,' + data;
+        videoElement.src = img.src;
+      }
+    });
+
+    document.getElementById('btnConnect').addEventListener('click', () => {
+      socket.connect();
+    });
+
+    document.getElementById('btnDisconnect').addEventListener('click', () => {
+      socket.disconnect();
+    });
+
+  </script>
+</body>
+
+</html>
